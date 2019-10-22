@@ -1,96 +1,104 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-
 def lineal(x):
-    return x
-
-def dx_lineal(x):
-    return 1
+    return [x,1]
 
 def sigmoid(x):
-    return 1.0/(1.0+np.exp(-x))
-
-def dx_sigmoid(x):
-    return np.multiply((1-x),x)
+    return [1.0/(1.0+np.exp(-x)),x-np.power(x,2)]
 
 def tanh(x):
     ep=np.exp(x)
     en=np.exp(-x)
-    return (ep-en)/(ep+en)
+    return [(ep-en)/(ep+en),1-np.power(x,2)]
+    
+data=np.genfromtxt('datosSeno.csv',delimiter=',')
 
-def dx_tanh(x):
-    return 1-np.multiply(x,x)    
+X=np.matrix(data[:,0]).transpose()
+Y=np.matrix(data[:,1]).transpose()
 
+rows = X.shape[0]
 
-data=np.genfromtxt('datos.csv',delimiter=',')
+red = [X.shape[1],30,40,Y.shape[1]]
 
-#X=np.matrix(data[:,0]).transpose()
-#Y=np.matrix(data[:,1]).transpose()
-X=np.matrix([[0,0],[0,1],[1,0],[1,1]])
-Y=np.matrix([[0],[1],[1],[0]])
-nn=[X.shape[1],10,Y.shape[1]]
-min=-2
-max=2
+minimo = -1
+maximo = 1
+#W1=np.matrix(np.genfromtxt('W1.csv',delimiter=',')).transpose()
+#W2=np.matrix(np.genfromtxt('W2.csv',delimiter=','))
+#W3=np.matrix(np.genfromtxt('W3.csv',delimiter=','))
+#b1=np.matrix(np.genfromtxt('b1.csv',delimiter=',')).transpose()
+#b2=np.matrix(np.genfromtxt('b2.csv',delimiter=',')).transpose()
+#b3=np.matrix(np.genfromtxt('b3.csv',delimiter=',')).transpose()
+W1 = minimo + np.random.rand(red[1],red[0]) * (maximo - minimo)
+W2 = minimo + np.random.rand(red[2],red[1]) * (maximo - minimo)
+W3 = minimo + np.random.rand(red[3],red[2]) * (maximo - minimo)
+b1 = minimo + np.random.rand(red[1],1) * (maximo - minimo)
+b2 = minimo + np.random.rand(red[2],1) * (maximo - minimo)
+b3 = minimo + np.random.rand(red[3],1) * (maximo - minimo)
 
-W1 = min+np.random.rand(nn[1],nn[0])*(max-min+1)
-W2 = min+np.random.rand(nn[2],nn[1])*(max-min+1)
-#W3 = min+np.random.rand(nn[3],nn[2])*(max-min+1)
+alfa = 0.1
 
-b1 = min+np.random.rand(nn[1],1)*(max-min+1)
-b2 = min+np.random.rand(nn[2],1)*(max-min+1)
-#b3 = min+np.random.rand(nn[3],1)*(max-min+1)
-
-alfa = 0.005
-
-i=0
-error_medio=[]
-a2=0
-while(i<100000):
-    j=0
+emedio=[]
+eI=1
+epocas=0
+while(eI>10**(-3)):
     suma=0
-    while(j<X.shape[0]):
-        a0 = X[j,:].transpose()
-        a1 = sigmoid(np.matmul(W1,a0) + b1)
-        a2 = sigmoid(np.matmul(W2,a1) + b2)
-        #a3 = lineal(np.matmul(W3,a2) + b3)
+    for i in range(rows):
+        a0 = X[i,:].transpose()
+        z1 = np.dot(W1,a0) + b1
+        a1 = sigmoid(z1)[0]
+        z2 = np.dot(W2,a1) + b2
+        a2 = sigmoid(z2)[0]
+        z3 = np.dot(W3,a2) + b3
+        a3 = lineal(z3)[0]     
 
-        e = Y[j,:].transpose() - a2
+        e = Y[i,:].transpose()-a3
         
-        suma = e**2 + suma
+        s3 = -2*(lineal(a3)[1])*e
+        s2 = np.diagflat(sigmoid(a2)[1])*W3.transpose()*s3
+        s1 = np.diagflat(sigmoid(a1)[1])*W2.transpose()*s2  
         
-        #s3 = -2*dx_lineal(a3)*e        
-        #s2 = np.diag(dx_sigmoid(a2))*W3.transpose()*s3
-        s2 = -2*dx_sigmoid(a2)*e
-        s1 = np.diag(dx_sigmoid(a1))*W2.transpose()*s2
+        W3 = W3 - alfa*s3*a2.transpose()
+        W2 = W2 - alfa*s2*a1.transpose()
+        W1 = W1 - alfa*s1*a0.transpose()
+        
+        b3 = b3 - alfa*s3        
+        b2 = b2 - alfa*s2        
+        b1 = b1 - alfa*s1  
+        
+        suma = e.transpose()*e + suma
+        
+    emedio.append((suma/rows)[0,0]) 
+    eI=emedio[epocas]
+    print(eI)
+    epocas=epocas+1
 
-        #W3 = np.copy(W3 - alfa*s3*a2.transpose())
-        W2 = np.copy(W2 - alfa*s2*a1.transpose())
-        W1 = np.copy(W1 - alfa*s1*a0.transpose())
-        #b3 = np.copy(b3 - alfa*s3)
-        b2 = np.copy(b2 - alfa*s2)
-        b1 = np.copy(b1 - alfa*s1)
- 
-        j=j+1
-    print((suma/j)[0,0])
-    error_medio.append((suma/j)[0,0])
-    i=i+1
+a=[]
+test = np.linspace(0,6,200)
+for i in test:
+    a0 = i
+    z1 = np.dot(W1,a0) + b1
+    a1 = sigmoid(z1)[0]
+    z2 = np.dot(W2,a1) + b2
+    a2 = sigmoid(z2)[0]
+    z3 = np.dot(W3,a2) + b3
+    a3 = lineal(z3)[0]     
+    a.append(a3[0,0])
 
-
-u = np.linspace(-2,2,100)
-v = np.linspace(-2,2,100)
-z = np.zeros([u.shape[0],v.shape[0]])
-
-for i,iv in enumerate(u):
-    for j,jv in enumerate(v):
-        a0 = [[iv],[jv]]
-        a1 = tanh(np.matmul(W1,a0) + b1)
-        a2 = tanh(np.matmul(W2,a1) + b2)
-        z[j,i]=a2
-
-fig,axis=plt.subplots(1,2)
-axis[0].contour(u,v,z)
-axis[0].plot(X,Y,"o")
-axis[1].plot(range(len(error_medio)),error_medio,'-',linewidth=1,color=(0,0,0))
-
+fig,graficas = plt.subplots(1,2)
+graficas[0].plot(range(len(emedio)),emedio,"b-",linewidth=1)
+graficas[1].plot(X,Y,"ro",linewidth=1)
+graficas[1].plot(test,a,"b-",linewidth=1)
 plt.show()
+
+
+
+
+
+
+
+
+
+
+
+
